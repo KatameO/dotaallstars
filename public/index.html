@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Dota 2 Lobby</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-color: #121318;
+      --card-bg: #1c1e24;
+      --accent-blue: #2ea6ff;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* Главный баннер лучшего времени */
+    .hero-card {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid rgba(46, 166, 255, 0.3);
+    }
+
+    .hero-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .hero-subtitle {
+      font-size: 14px;
+      color: var(--accent-blue);
+    }
+
+    /* Ввод времени */
+    .input-group {
+      margin-bottom: 12px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .time-input {
+      width: 100%;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 600;
+      box-sizing: border-box;
+    }
+
+    /* Кнопки */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn:active {
+      opacity: 0.8;
+    }
+
+    .btn-green { background: var(--accent-green); color: #000; }
+    .btn-red { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    /* Список готовых игроков */
+    .player-column {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .player-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .player-name {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .player-time {
+      font-size: 13px;
+      color: #4ade80;
+      background: rgba(34, 197, 94, 0.15);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    /* Список отказавшихся */
+    .player-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .badge-declined {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      background: rgba(239, 68, 68, 0.1);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Блок: Общая сводка -->
+  <div class="card hero-card">
+    <div class="hero-title" id="best-time-header">🔥 Поиск времени...</div>
+    <div class="hero-subtitle" id="best-time-sub">Загружаем данные...</div>
+  </div>
+
+  <!-- Блок: Установка своего времени -->
+  <div class="card">
+    <div class="card-title">Твой статус на сегодня</div>
+    
+    <div class="input-group">
+      <label>Со сколько готов играть? (по МСК)</label>
+      <input type="time" id="start-time" class="time-input" value="18:00">
+    </div>
+
+    <div class="btn-grid">
+      <button class="btn btn-red" onclick="markDeclined()">❌ Не буду</button>
+      <button class="btn btn-green" onclick="saveReady()">✅ Готов играть</button>
+    </div>
+  </div>
+
+  <!-- Блок: Подробный список готовых -->
+  <div class="card">
+    <div class="card-title">🟢 Готовы играть</div>
+    <div class="player-column" id="ready-players-list">
+      <span style="color: var(--text-muted); font-size: 13px;">Пока никто не отметился</span>
+    </div>
+  </div>
+
+  <!-- Блок: Отказались -->
+  <div class="card">
+    <div class="card-title">🔴 Не смогут сегодня</div>
+    <div class="player-list" id="declined-players-list">
+      <span style="color: var(--text-muted); font-size: 13px;">Никто не отказывался</span>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    if (tg) tg.expand();
+
+    const user = tg?.initDataUnsafe?.user || { id: 1001, first_name: "Кирилл (Тест)" };
+    const userTz = "Europe/Moscow";
+
+    async function initUser() {
+      await fetch('/api/user/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          username: user.username || user.first_name,
+          timezone: userTz
+        })
+      });
+      loadBestTime();
+    }
+
+    async function saveReady() {
+      const startTime = document.getElementById('start-time').value;
+      const today = new Date().toISOString().split('T')[0];
+
+      // Фиксируем смещение +03:00 (МСК), чтобы локальная часовая зона не сдвигала время
+      const startMskIso = `${today}T${startTime}:00+03:00`;
+      const endMskIso = `${today}T23:59:59+03:00`;
+
+      const startUtc = new Date(startMskIso).toISOString();
+      const endUtc = new Date(endMskIso).toISOString();
+
+      await fetch(`/api/slots/set?user_id=${user.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([{
+          user_id: user.id,
+          start_utc: startUtc,
+          end_utc: endUtc
+        }])
+      });
+
+      loadBestTime();
+    }
+
+    async function markDeclined() {
+      const today = new Date().toISOString().split('T')[0];
+      const sameTimeUtc = new Date(`${today}T00:00:00+03:00`).toISOString();
+
+      await fetch(`/api/slots/set?user_id=${user.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([{
+          user_id: user.id,
+          start_utc: sameTimeUtc,
+          end_utc: sameTimeUtc
+        }])
+      });
+
+      loadBestTime();
+    }
+
+    async function loadBestTime() {
+      const res = await fetch('/api/analytics/best-time');
+      const data = await res.json();
+
+      const headerEl = document.getElementById('best-time-header');
+      const subEl = document.getElementById('best-time-sub');
+      const readyListEl = document.getElementById('ready-players-list');
+      const declinedListEl = document.getElementById('declined-players-list');
+
+      if (!data.best_time_msk) {
+        headerEl.innerText = "⏳ Время не выбрано";
+        subEl.innerText = "Отметьтесь первым!";
+      } else {
+        const localTimeStr = data.best_time_msk;
+
+        if (data.is_full_stack) {
+          headerEl.innerText = `🎉 СТЕК СОБРАН! (${data.best_count}/${data.threshold})`;
+          subEl.innerText = `Пиковый онлайн с ${localTimeStr} (МСК)`;
+        } else {
+          headerEl.innerText = `🔥 Пик с ${localTimeStr} (МСК) — ${data.best_count} из ${data.threshold}`;
+          subEl.innerText = `Не хватает ещё ${data.missing_count} чел.`;
+        }
+      }
+
+      if (data.ready_players_detailed && data.ready_players_detailed.length > 0) {
+        readyListEl.innerHTML = data.ready_players_detailed
+          .map(p => `
+            <div class="player-row">
+              <span class="player-name">🎮 ${p.username}</span>
+              <span class="player-time">с ${p.start_time_msk}</span>
+            </div>
+          `)
+          .join('');
+      } else {
+        readyListEl.innerHTML = '<span style="color: var(--text-muted); font-size: 13px;">Пока никто не готов</span>';
+      }
+
+      if (data.declined_players && data.declined_players.length > 0) {
+        declinedListEl.innerHTML = data.declined_players
+          .map(p => `<div class="badge-declined">❌ ${p}</div>`)
+          .join('');
+      } else {
+        declinedListEl.innerHTML = '<span style="color: var(--text-muted); font-size: 13px;">Никто не отказывался</span>';
+      }
+    }
+
+    initUser();
+  </script>
+</body>
+</html>
